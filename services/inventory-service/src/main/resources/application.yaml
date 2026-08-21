@@ -50,3 +50,10 @@ logging:
   level:
     org.flywaydb: DEBUG
     org.springframework.boot.autoconfigure.flyway: DEBUG
+
+app:
+  kafka:
+    topics:
+      inventory: ${KAFKA_INVENTORY_TOPIC:inventory-events}
+      order: ${KAFKA_ORDER_TOPIC:order-events}
+      notification: ${KAFKA_NOTIFICATION_TOPIC:notification-events}

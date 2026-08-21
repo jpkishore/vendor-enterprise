@@ -3,10 +3,13 @@ package com.platform.inventory.service;
 import com.platform.inventory.dto.*;
 import com.platform.inventory.entity.Inventory;
 import com.platform.inventory.entity.InventoryStatus;
+import com.platform.inventory.kafka.InventoryEventProducer;
+import com.platform.inventory.kafka.InventoryEventType;
 import com.platform.inventory.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -14,9 +17,10 @@ import java.util.List;
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
-
-    public InventoryService(InventoryRepository inventoryRepository) {
+    private final InventoryEventProducer inventoryEventProducer;
+    public InventoryService(InventoryRepository inventoryRepository, InventoryEventProducer inventoryEventProducer) {
         this.inventoryRepository = inventoryRepository;
+        this.inventoryEventProducer = inventoryEventProducer;
     }
 
     // =========================================================
@@ -165,9 +169,23 @@ public class InventoryService {
                         + request.quantity()
         );
 
-        return toResponse(
-                inventoryRepository.save(inventory)
+        Inventory saved =
+                inventoryRepository.save(inventory);
+
+        inventoryEventProducer.publish(
+                new InventoryEvent(
+                        InventoryEventType.STOCK_RESERVED,
+                        saved.getId(),
+                        saved.getProductId(),
+                        saved.getVariantId(),
+                        saved.getQuantity(),
+                        saved.getReservedQuantity(),
+                        saved.getAvailableQuantity(),
+                        Instant.now()
+                )
         );
+
+        return toResponse(saved);
     }
 
     // =========================================================
@@ -198,9 +216,23 @@ public class InventoryService {
                 reserved - request.quantity()
         );
 
-        return toResponse(
-                inventoryRepository.save(inventory)
+        Inventory saved =
+                inventoryRepository.save(inventory);
+
+        inventoryEventProducer.publish(
+                new InventoryEvent(
+                        InventoryEventType.STOCK_RELEASED,
+                        saved.getId(),
+                        saved.getProductId(),
+                        saved.getVariantId(),
+                        saved.getQuantity(),
+                        saved.getReservedQuantity(),
+                        saved.getAvailableQuantity(),
+                        Instant.now()
+                )
         );
+
+        return toResponse(saved);
     }
 
     // =========================================================
@@ -239,9 +271,27 @@ public class InventoryService {
 
         updateStatus(inventory);
 
-        return toResponse(
-                inventoryRepository.save(inventory)
+        inventory.setQuantity(newQuantity);
+
+        updateStatus(inventory);
+
+        Inventory saved =
+                inventoryRepository.save(inventory);
+
+        inventoryEventProducer.publish(
+                new InventoryEvent(
+                        InventoryEventType.STOCK_ADJUSTED,
+                        saved.getId(),
+                        saved.getProductId(),
+                        saved.getVariantId(),
+                        saved.getQuantity(),
+                        saved.getReservedQuantity(),
+                        saved.getAvailableQuantity(),
+                        Instant.now()
+                )
         );
+
+        return toResponse(saved);
     }
 
     // =========================================================
