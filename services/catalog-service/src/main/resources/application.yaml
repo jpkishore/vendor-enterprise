@@ -41,3 +41,7 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9}

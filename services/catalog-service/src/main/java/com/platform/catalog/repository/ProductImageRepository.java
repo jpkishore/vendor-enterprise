@@ -1,0 +1,16 @@
+package com.platform.catalog.repository;
+
+import com.platform.catalog.entity.ProductImage;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface ProductImageRepository
+        extends JpaRepository<ProductImage, Long> {
+
+    List<ProductImage> findByProductIdOrderByDisplayOrderAsc(
+            Long productId
+    );
+
+    long countByProductId(Long productId);
+}
