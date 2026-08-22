@@ -1,6 +1,8 @@
 package com.platform.inventory.config;
 
 import com.platform.inventory.security.JwtAuthenticationFilter;
+import com.platform.inventory.security.ServiceTokenFilter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,11 +16,17 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    private final ServiceTokenFilter serviceTokenFilter;
+
     public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ServiceTokenFilter serviceTokenFilter
     ) {
         this.jwtAuthenticationFilter =
                 jwtAuthenticationFilter;
+
+        this.serviceTokenFilter =
+                serviceTokenFilter;
     }
 
     @Bean
@@ -27,7 +35,10 @@ public class SecurityConfig {
     ) throws Exception {
 
         return http
-                .csrf(csrf -> csrf.disable())
+
+                .csrf(csrf ->
+                        csrf.disable()
+                )
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -37,18 +48,18 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // =========================
+                        // =====================================
                         // ACTUATOR
-                        // =========================
+                        // =====================================
 
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()
 
-                        // =========================
-                        // CUSTOMER
-                        // =========================
+                        // =====================================
+                        // CUSTOMER / ADMIN READ
+                        // =====================================
 
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -60,9 +71,9 @@ public class SecurityConfig {
                                 "SUPER_ADMIN"
                         )
 
-                        // =========================
+                        // =====================================
                         // ADMIN
-                        // =========================
+                        // =====================================
 
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -82,34 +93,53 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/api/v1/inventory/*/reserve"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "SUPER_ADMIN"
-                        )
-
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/v1/inventory/*/release"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "SUPER_ADMIN"
-                        )
-
-                        .requestMatchers(
-                                HttpMethod.POST,
                                 "/api/v1/inventory/*/adjust"
                         ).hasAnyRole(
                                 "ADMIN",
                                 "SUPER_ADMIN"
                         )
 
+                        // =====================================
+                        // INTERNAL ORDER SERVICE
+                        // =====================================
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/inventory/*/reserve"
+                        ).hasRole(
+                                "INTERNAL_SERVICE"
+                        )
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/inventory/*/release"
+                        ).hasRole(
+                                "INTERNAL_SERVICE"
+                        )
+
+                        // =====================================
+                        // EVERYTHING ELSE
+                        // =====================================
+
                         .anyRequest().authenticated()
                 )
+
+                // =============================================
+                // JWT FILTER
+                // =============================================
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
+                )
+
+                // =============================================
+                // SERVICE TOKEN FILTER
+                // =============================================
+
+                .addFilterAfter(
+                        serviceTokenFilter,
+                        JwtAuthenticationFilter.class
                 )
 
                 .build();

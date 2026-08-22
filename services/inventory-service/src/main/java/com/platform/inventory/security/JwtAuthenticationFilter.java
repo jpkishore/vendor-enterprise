@@ -98,6 +98,7 @@ public class JwtAuthenticationFilter
                     "JWT USERNAME = " + username
             );
 
+
             System.out.println(
                     "JWT AUTHORITIES = " + authorities
             );

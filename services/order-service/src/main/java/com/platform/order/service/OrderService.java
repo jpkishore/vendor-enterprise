@@ -4,18 +4,21 @@ import com.platform.order.client.CartClient;
 import com.platform.order.client.CatalogClient;
 import com.platform.order.client.InventoryClient;
 import com.platform.order.dto.*;
-import com.platform.order.entity.Order;
-import com.platform.order.entity.OrderItem;
-import com.platform.order.entity.OrderStatus;
+import com.platform.order.entity.*;
+import com.platform.order.kafka.OrderEventProducer;
+import com.platform.order.repository.IdempotencyKeyRepository;
 import com.platform.order.repository.OrderRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class OrderService {
@@ -24,26 +27,84 @@ public class OrderService {
     private final CartClient cartClient;
     private final CatalogClient catalogClient;
     private final InventoryClient inventoryClient;
+    private final OrderEventProducer orderEventProducer;
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
     public OrderService(
             OrderRepository orderRepository,
             CartClient cartClient,
-            CatalogClient catalogClient, InventoryClient inventoryClient
+            CatalogClient catalogClient,
+            InventoryClient inventoryClient, OrderEventProducer orderEventProducer, IdempotencyKeyRepository idempotencyKeyRepository
     ) {
         this.orderRepository = orderRepository;
         this.cartClient = cartClient;
         this.catalogClient = catalogClient;
         this.inventoryClient = inventoryClient;
+        this.orderEventProducer = orderEventProducer;
+        this.idempotencyKeyRepository = idempotencyKeyRepository;
     }
 
     // =========================================================
     // CREATE ORDER
     // =========================================================
 
-    public OrderResponse createOrder(Long userId) {
-
-        // =========================================================
+    public OrderResponse createOrder(
+            Long userId,
+            String idempotencyKey
+    ){
+        // =====================================================
         // 1. GET CUSTOMER CART
-        // =========================================================
+        // =====================================================
+        if (idempotencyKey == null
+                || idempotencyKey.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Idempotency-Key header is required"
+            );
+        }
+        IdempotencyKey existing =
+                idempotencyKeyRepository
+                        .findByUserIdAndIdempotencyKey(
+                                userId,
+                                idempotencyKey
+                        )
+                        .orElse(null);
+
+        if (existing != null) {
+
+            if (existing.getOrderId() != null) {
+
+                Order existingOrder =
+                        orderRepository
+                                .findById(
+                                        existing.getOrderId()
+                                )
+                                .orElseThrow(() ->
+                                        new IllegalStateException(
+                                                "Order associated with idempotency key not found"
+                                        )
+                                );
+
+                return toResponse(existingOrder);
+            }
+
+            throw new IllegalStateException(
+                    "Order creation is already in progress"
+            );
+        }
+        IdempotencyKey key =
+                new IdempotencyKey();
+
+        key.setUserId(userId);
+
+        key.setIdempotencyKey(
+                idempotencyKey
+        );
+
+        key.setCreatedAt(
+                Instant.now()
+        );
+
+
 
         CartResponse cart;
 
@@ -53,15 +114,21 @@ public class OrderService {
 
         } catch (Exception exception) {
 
+            log.error(
+                    "Unable to retrieve cart for user={}",
+                    userId,
+                    exception
+            );
+
             throw new IllegalStateException(
                     "Unable to retrieve cart",
                     exception
             );
         }
 
-        // =========================================================
+        // =====================================================
         // 2. VALIDATE CART
-        // =========================================================
+        // =====================================================
 
         if (cart == null) {
 
@@ -85,9 +152,9 @@ public class OrderService {
             );
         }
 
-        // =========================================================
-        // 3. CREATE PENDING ORDER
-        // =========================================================
+        // =====================================================
+        // 3. CREATE ORDER IN MEMORY
+        // =====================================================
 
         Order order = new Order();
 
@@ -108,16 +175,16 @@ public class OrderService {
         BigDecimal totalAmount =
                 BigDecimal.ZERO;
 
-        // =========================================================
+        // =====================================================
         // 4. PROCESS CART ITEMS
-        // =========================================================
+        // =====================================================
 
         for (CartItemResponse cartItem :
                 cart.items()) {
 
-            // -----------------------------------------------------
-            // Validate Product
-            // -----------------------------------------------------
+            // =================================================
+            // 4.1 VALIDATE PRODUCT
+            // =================================================
 
             CatalogProductResponse product;
 
@@ -129,6 +196,12 @@ public class OrderService {
                         );
 
             } catch (Exception exception) {
+
+                log.error(
+                        "Unable to validate product={}",
+                        cartItem.productId(),
+                        exception
+                );
 
                 throw new IllegalStateException(
                         "Unable to validate product: "
@@ -145,9 +218,9 @@ public class OrderService {
                 );
             }
 
-            // -----------------------------------------------------
-            // Validate Variant
-            // -----------------------------------------------------
+            // =================================================
+            // 4.2 VALIDATE VARIANT
+            // =================================================
 
             CatalogVariantResponse variant;
 
@@ -160,6 +233,12 @@ public class OrderService {
                         );
 
             } catch (Exception exception) {
+
+                log.error(
+                        "Unable to retrieve variant={}",
+                        cartItem.variantId(),
+                        exception
+                );
 
                 throw new IllegalStateException(
                         "Unable to retrieve variant: "
@@ -176,6 +255,10 @@ public class OrderService {
                 );
             }
 
+            // =================================================
+            // 4.3 VALIDATE PRODUCT / VARIANT RELATIONSHIP
+            // =================================================
+
             if (!variant.productId()
                     .equals(cartItem.productId())) {
 
@@ -184,9 +267,9 @@ public class OrderService {
                 );
             }
 
-            // -----------------------------------------------------
-            // Get Price
-            // -----------------------------------------------------
+            // =================================================
+            // 4.4 GET CURRENT PRICE
+            // =================================================
 
             BigDecimal unitPrice =
                     variant.price();
@@ -199,9 +282,21 @@ public class OrderService {
                 );
             }
 
-            // -----------------------------------------------------
-            // Calculate Item Total
-            // -----------------------------------------------------
+            // =================================================
+            // 4.5 VALIDATE QUANTITY
+            // =================================================
+
+            if (cartItem.quantity() == null
+                    || cartItem.quantity() <= 0) {
+
+                throw new IllegalArgumentException(
+                        "Quantity must be greater than zero"
+                );
+            }
+
+            // =================================================
+            // 4.6 CALCULATE ITEM TOTAL
+            // =================================================
 
             BigDecimal itemTotal =
                     unitPrice.multiply(
@@ -210,9 +305,9 @@ public class OrderService {
                             )
                     );
 
-            // -----------------------------------------------------
-            // Create Order Item
-            // -----------------------------------------------------
+            // =================================================
+            // 4.7 CREATE ORDER ITEM
+            // =================================================
 
             OrderItem orderItem =
                     new OrderItem();
@@ -243,22 +338,38 @@ public class OrderService {
                     totalAmount.add(itemTotal);
         }
 
-        // =========================================================
+        // =====================================================
         // 5. SET ORDER TOTAL
-        // =========================================================
+        // =====================================================
 
         order.setTotalAmount(
                 totalAmount
         );
 
-        // =========================================================
+        log.info(
+                "Order prepared. user={}, orderNumber={}, total={}",
+                userId,
+                order.getOrderNumber(),
+                totalAmount
+        );
+
+        // =====================================================
         // 6. RESERVE INVENTORY
-        // =========================================================
+        // =====================================================
 
-        for (OrderItem orderItem :
-                order.getItems()) {
+        List<OrderItem> reservedItems =
+                new ArrayList<>();
 
-            try {
+        try {
+
+            for (OrderItem orderItem :
+                    order.getItems()) {
+
+                log.info(
+                        "Reserving inventory. variant={}, quantity={}",
+                        orderItem.getVariantId(),
+                        orderItem.getQuantity()
+                );
 
                 inventoryClient.reserve(
                         orderItem.getVariantId(),
@@ -267,77 +378,110 @@ public class OrderService {
                         )
                 );
 
-            } catch (Exception exception) {
+                reservedItems.add(orderItem);
 
-                // -------------------------------------------------
-                // Reservation failed
-                // -------------------------------------------------
-
-                throw new IllegalStateException(
-                        "Unable to reserve inventory for variant: "
-                                + orderItem.getVariantId(),
-                        exception
+                log.info(
+                        "Inventory reserved successfully. variant={}, quantity={}",
+                        orderItem.getVariantId(),
+                        orderItem.getQuantity()
                 );
             }
+
+        } catch (Exception exception) {
+
+            log.error(
+                    "Inventory reservation failed. Starting rollback. orderNumber={}",
+                    order.getOrderNumber(),
+                    exception
+            );
+
+            releaseReservedInventory(
+                    reservedItems
+            );
+
+            throw new IllegalStateException(
+                    "Unable to reserve inventory",
+                    exception
+            );
         }
 
-        // =========================================================
+        // =====================================================
         // 7. INVENTORY RESERVED
-        // =========================================================
+        // =====================================================
 
         order.setStatus(
                 OrderStatus.CONFIRMED
         );
 
-        // =========================================================
+        log.info(
+                "Inventory reservation successful. Confirming order={}",
+                order.getOrderNumber()
+        );
+
+        // =====================================================
         // 8. SAVE ORDER
-        // =========================================================
+        // =====================================================
 
         Order savedOrder =
                 orderRepository.save(order);
+        key.setOrderId(
+                savedOrder.getId()
+        );
 
-        // =========================================================
+        key.setStatus(
+                IdempotencyStatus.COMPLETED
+        );
+
+        key.setUpdatedAt(
+                Instant.now()
+        );
+
+        idempotencyKeyRepository.save(key);
+        log.info(
+                "Order created successfully. orderId={}, orderNumber={}, user={}",
+                savedOrder.getId(),
+                savedOrder.getOrderNumber(),
+                userId
+        );
+
+        // =====================================================
         // 9. RETURN RESPONSE
-        // =========================================================
+        // =====================================================
 
-        return toResponse(savedOrder);
+        OrderEvent event =
+                buildOrderEvent(savedOrder);
+
+        orderEventProducer.publish(event);
+
+        return toResponse(savedOrder);    }
+    private OrderEvent buildOrderEvent(
+            Order order
+    ) {
+
+        List<OrderEventItem> items =
+                order.getItems()
+                        .stream()
+                        .map(item ->
+                                new OrderEventItem(
+                                        item.getProductId(),
+                                        item.getVariantId(),
+                                        item.getQuantity(),
+                                        item.getUnitPrice(),
+                                        item.getTotalPrice()
+                                )
+                        )
+                        .toList();
+
+        return new OrderEvent(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getUserId(),
+                order.getStatus().name(),
+                order.getTotalAmount(),
+                items,
+                Instant.now()
+        );
     }
-
-    private CartResponse getCartResponse(Long userId) {
-        CartResponse cart;
-
-        try {
-
-            cart = cartClient.getCart();
-
-        } catch (Exception exception) {
-
-            throw new IllegalStateException(
-                    "Unable to retrieve cart",
-                    exception
-            );
-        }
-
-        // -----------------------------------------------------
-        // 2. VALIDATE CART
-        // -----------------------------------------------------
-
-        if (cart == null) {
-
-            throw new IllegalStateException(
-                    "Cart not found"
-            );
-        }
-
-        if (!cart.userId().equals(userId)) {
-
-            throw new IllegalStateException(
-                    "Cart does not belong to current user"
-            );
-        }
-        return cart;
-    }
-
     // =========================================================
     // GET ORDER
     // =========================================================
@@ -388,6 +532,13 @@ public class OrderService {
                         orderId
                 );
 
+        // =====================================================
+        // VALIDATE ORDER STATUS
+        // =====================================================
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+
+            return toResponse(order);
+        }
         if (order.getStatus() != OrderStatus.PENDING
                 && order.getStatus() != OrderStatus.CONFIRMED) {
 
@@ -397,17 +548,80 @@ public class OrderService {
             );
         }
 
+        // =====================================================
+        // RELEASE INVENTORY
+        // =====================================================
+
+        releaseReservedInventory(
+                order.getItems()
+        );
+
+        // =====================================================
+        // UPDATE ORDER STATUS
+        // =====================================================
+
         order.setStatus(
                 OrderStatus.CANCELLED
         );
 
-        return toResponse(
-                orderRepository.save(order)
+        Order savedOrder =
+                orderRepository.save(order);
+
+        log.info(
+                "Order cancelled successfully. orderId={}, user={}",
+                orderId,
+                userId
         );
+
+        return toResponse(savedOrder);
     }
 
     // =========================================================
-    // INTERNAL
+    // RELEASE RESERVED INVENTORY
+    // =========================================================
+
+    private void releaseReservedInventory(
+            List<OrderItem> reservedItems
+    ) {
+
+        if (reservedItems == null
+                || reservedItems.isEmpty()) {
+
+            return;
+        }
+
+        for (OrderItem item :
+                reservedItems) {
+
+            try {
+
+                inventoryClient.release(
+                        item.getVariantId(),
+                        new StockRequest(
+                                item.getQuantity()
+                        )
+                );
+
+                log.info(
+                        "Inventory released. variant={}, quantity={}",
+                        item.getVariantId(),
+                        item.getQuantity()
+                );
+
+            } catch (Exception exception) {
+
+                log.error(
+                        "Failed to release inventory. variant={}, quantity={}",
+                        item.getVariantId(),
+                        item.getQuantity(),
+                        exception
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // GET ORDER FOR USER
     // =========================================================
 
     private Order getOrderForUser(
@@ -429,6 +643,10 @@ public class OrderService {
                 );
     }
 
+    // =========================================================
+    // GENERATE ORDER NUMBER
+    // =========================================================
+
     private String generateOrderNumber() {
 
         return "ORD-"
@@ -439,6 +657,10 @@ public class OrderService {
                 .substring(0, 8)
                 .toUpperCase();
     }
+
+    // =========================================================
+    // CONVERT TO ORDER RESPONSE
+    // =========================================================
 
     private OrderResponse toResponse(
             Order order
@@ -471,6 +693,10 @@ public class OrderService {
         );
     }
 
+    // =========================================================
+    // CONVERT TO SUMMARY RESPONSE
+    // =========================================================
+
     private OrderSummaryResponse toSummaryResponse(
             Order order
     ) {
@@ -484,5 +710,18 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderById(Long orderId) {
 
+        Order order =
+                orderRepository
+                        .findById(orderId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Order not found: " + orderId
+                                )
+                        );
+
+        return toResponse(order);
+    }
 }

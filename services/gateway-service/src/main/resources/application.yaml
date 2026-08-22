@@ -80,6 +80,15 @@ spring:
               uri: lb://ORDER-SERVICE
               predicates:
                 - Path=/api/v1/orders/**
+
+            # =========================
+            # PAYMENT SERVICE
+            # =========================
+
+            - id: payment-service
+              uri: lb://PAYMENT-SERVICE
+              predicates:
+                - Path=/api/v1/payments/**
 eureka:
   client:
     service-url:

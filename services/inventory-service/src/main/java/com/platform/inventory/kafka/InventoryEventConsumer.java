@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.util.logging.Logger;
+
 @Slf4j
 @Component
 public class InventoryEventConsumer {
@@ -15,19 +17,19 @@ public class InventoryEventConsumer {
     )
     public void consume(InventoryEvent event) {
 
-        log.info(
-                "Inventory Kafka event received: eventType={}, " +
-                        "inventoryId={}, productId={}, variantId={}, " +
-                        "quantity={}, reservedQuantity={}, availableQuantity={}, " +
-                        "occurredAt={}",
-                event.eventType(),
-                event.inventoryId(),
-                event.productId(),
-                event.variantId(),
-                event.quantity(),
-                event.reservedQuantity(),
-                event.availableQuantity(),
-                event.occurredAt()
-        );
+//        log.debug(
+//                "Inventory Kafka event received: eventType={}, " +
+//                        "inventoryId={}, productId={}, variantId={}, " +
+//                        "quantity={}, reservedQuantity={}, availableQuantity={}, " +
+//                        "occurredAt={}",
+//                event.eventType(),
+//                event.inventoryId(),
+//                event.productId(),
+//                event.variantId(),
+//                event.quantity(),
+//                event.reservedQuantity(),
+//                event.availableQuantity(),
+//                event.occurredAt()
+//        );
     }
 }

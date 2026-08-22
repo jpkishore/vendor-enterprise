@@ -15,12 +15,24 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    consumer:
+      group-id: inventory-service-consumer
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring.json.trusted.packages: com.platform.inventory.dto
+        spring.json.value.default.type: com.platform.inventory.dto.InventoryEvent
+
   flyway:
     enabled: true
 
@@ -51,11 +63,13 @@ security:
   jwt:
     secret: ${JWT_SECRET:8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9}
 
+  service:
+    token: ${ORDER_SERVICE_TOKEN:order-service-internal-token}
+
 logging:
   level:
     org.flywaydb: DEBUG
     org.springframework.boot.autoconfigure.flyway: DEBUG
-
 
 app:
   kafka:

@@ -1,6 +1,7 @@
 package com.platform.order.config;
 
 import com.platform.order.security.JwtAuthenticationFilter;
+import com.platform.order.security.ServiceTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,11 +15,18 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    private final ServiceTokenFilter serviceTokenFilter;
+
     public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ServiceTokenFilter serviceTokenFilter
     ) {
+
         this.jwtAuthenticationFilter =
                 jwtAuthenticationFilter;
+
+        this.serviceTokenFilter =
+                serviceTokenFilter;
     }
 
     @Bean
@@ -27,7 +35,18 @@ public class SecurityConfig {
     ) throws Exception {
 
         return http
-                .csrf(csrf -> csrf.disable())
+
+                // =========================================
+                // CSRF
+                // =========================================
+
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+
+                // =========================================
+                // SESSION
+                // =========================================
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -35,55 +54,90 @@ public class SecurityConfig {
                         )
                 )
 
+                // =========================================
+                // AUTHORIZATION
+                // =========================================
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // =====================================
+                        // =================================
                         // ACTUATOR
-                        // =====================================
+                        // =================================
 
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/info"
-                        ).permitAll()
+                        )
+                        .permitAll()
 
-                        // =====================================
-                        // CUSTOMER
-                        // =====================================
+                        // =================================
+                        // CREATE ORDER
+                        // CUSTOMER / ADMIN
+                        // =================================
 
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/v1/orders"
-                        ).hasAnyRole(
+                        )
+                        .hasAnyRole(
                                 "CUSTOMER",
                                 "ADMIN",
                                 "SUPER_ADMIN"
                         )
+
+                        // =================================
+                        // GET ORDERS
+                        //
+                        // CUSTOMER can access
+                        // INTERNAL_SERVICE can access
+                        // =================================
 
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/orders",
                                 "/api/v1/orders/**"
-                        ).hasAnyRole(
+                        )
+                        .hasAnyRole(
                                 "CUSTOMER",
                                 "ADMIN",
-                                "SUPER_ADMIN"
+                                "SUPER_ADMIN",
+                                "INTERNAL_SERVICE"
                         )
+
+                        // =================================
+                        // CANCEL ORDER
+                        // =================================
 
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/v1/orders/*/cancel"
-                        ).hasAnyRole(
+                        )
+                        .hasAnyRole(
                                 "CUSTOMER",
                                 "ADMIN",
                                 "SUPER_ADMIN"
                         )
 
-                        // =====================================
+                        // =================================
                         // EVERYTHING ELSE
-                        // =====================================
+                        // =================================
 
-                        .anyRequest().authenticated()
+                        .anyRequest()
+                        .authenticated()
                 )
+
+                // =========================================
+                // INTERNAL SERVICE TOKEN
+                // =========================================
+
+                .addFilterBefore(
+                        serviceTokenFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
+                // =========================================
+                // JWT
+                // =========================================
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,

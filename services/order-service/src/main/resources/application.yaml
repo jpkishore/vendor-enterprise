@@ -2,6 +2,10 @@ spring:
   application:
     name: order-service
 
+  cloud:
+    loadbalancer:
+      enabled: true
+
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/order_db?useSSL=false&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
@@ -19,27 +23,86 @@ spring:
   flyway:
     enabled: true
 
+  # =========================================
+  # KAFKA
+  # =========================================
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+    # =========================================
+    # PRODUCER
+    # =========================================
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    # =========================================
+    # CONSUMER
+    # =========================================
+
+    consumer:
+      group-id: order-service-payment-consumer
+      auto-offset-reset: earliest
+
+      key-deserializer:
+        org.apache.kafka.common.serialization.StringDeserializer
+
+      value-deserializer:
+        org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring.json.trusted.packages: com.platform.order.dto
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.platform.order.dto.PaymentEvent
+
 server:
   port: 8085
+
+# =========================================
+# EUREKA
+# =========================================
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
     register-with-eureka: true
     fetch-registry: true
 
   instance:
     prefer-ip-address: true
 
+# =========================================
+# SECURITY
+# =========================================
+
 security:
   jwt:
     secret: ${JWT_SECRET:8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9}
+
+  service:
+    token: ${ORDER_SERVICE_TOKEN:order-service-internal-token}
+
+# =========================================
+# APPLICATION
+# =========================================
 
 app:
   kafka:
     topics:
       order: ${KAFKA_ORDER_TOPIC:order-events}
+      payment: ${KAFKA_PAYMENT_TOPIC:payment-events}
+
+# =========================================
+# LOGGING
+# =========================================
+
+logging:
+  level:
+    org.springframework.cloud.loadbalancer: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    com.netflix.discovery: DEBUG
+    org.springframework.kafka: INFO

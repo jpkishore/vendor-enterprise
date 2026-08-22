@@ -1,14 +1,16 @@
 package com.platform.order.client;
 
-import com.platform.order.config.FeignClientConfig;
+import com.platform.order.config.ServiceFeignConfig;
 import com.platform.order.dto.InventoryResponse;
 import com.platform.order.dto.StockRequest;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "inventory-service",
-        configuration = FeignClientConfig.class
+        configuration = ServiceFeignConfig.class
 )
 public interface InventoryClient {
 

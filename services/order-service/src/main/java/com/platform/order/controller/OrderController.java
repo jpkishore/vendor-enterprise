@@ -22,9 +22,12 @@ public class OrderController {
     // CREATE ORDER
     // =========================================================
 
+
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
-            Authentication authentication
+            Authentication authentication,
+            @RequestHeader("Idempotency-Key")
+            String idempotencyKey
     ) {
 
         Long userId =
@@ -35,10 +38,12 @@ public class OrderController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(
-                        orderService.createOrder(userId)
+                        orderService.createOrder(
+                                userId,
+                                idempotencyKey
+                        )
                 );
     }
-
     // =========================================================
     // GET MY ORDERS
     // =========================================================
@@ -64,10 +69,29 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(
-            Authentication authentication,
-            @PathVariable Long orderId
+            @PathVariable Long orderId,
+            Authentication authentication
     ) {
 
+        boolean internalService =
+                authentication.getAuthorities()
+                        .stream()
+                        .anyMatch(authority ->
+                                authority.getAuthority()
+                                        .equals("ROLE_INTERNAL_SERVICE")
+                        );
+
+        // Payment Service / internal service
+        if (internalService) {
+
+            return ResponseEntity.ok(
+                    orderService.getOrderById(
+                            orderId
+                    )
+            );
+        }
+
+        // Customer JWT
         Long userId =
                 Long.valueOf(
                         authentication.getName()
