@@ -7,7 +7,19 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:adhiyan8718}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
+            logger-level: basic
 
+          inventory-service:
+            connect-timeout: 2000
+            read-timeout: 5000
+            logger-level: full
   jpa:
     open-in-view: false
     hibernate:

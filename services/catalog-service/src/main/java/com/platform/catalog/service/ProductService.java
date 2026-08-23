@@ -13,6 +13,8 @@ import com.platform.catalog.exception.ProductNotFoundException;
 import com.platform.catalog.repository.CategoryRepository;
 import com.platform.catalog.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -90,6 +92,10 @@ public class ProductService {
                 .toList();
     }
 
+    @Cacheable(
+            value = "productById",
+            key = "#id"
+    )
     @Transactional(readOnly = true)
     public ProductResponse findById(Long id) {
 
@@ -102,6 +108,10 @@ public class ProductService {
         return toResponse(product);
     }
 
+    @CacheEvict(
+            value = "productById",
+            key = "#id"
+    )
     public ProductResponse update(
             Long id,
             ProductUpdateRequest request
@@ -164,6 +174,10 @@ public class ProductService {
         return toResponse(updated);
     }
 
+    @CacheEvict(
+            value = "productById",
+            key = "#id"
+    )
     public void delete(Long id) {
 
         Product product =

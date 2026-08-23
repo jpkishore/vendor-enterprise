@@ -1,3 +1,63 @@
 spring:
   application:
     name: notification-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/notification_db?useSSL=false&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:adhiyan8718}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    jpa:
+      open-in-view: false
+      hibernate:
+        ddl-auto: validate
+      properties:
+        hibernate:
+          format_sql: true
+
+    flyway:
+      enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      auto-offset-reset: earliest
+
+      key-deserializer:
+        org.apache.kafka.common.serialization.StringDeserializer
+
+      value-deserializer:
+        org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring.json.trusted.packages: com.platform.notification.dto
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.platform.notification.dto.NotificationEvent
+
+server:
+  port: 8087
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+    register-with-eureka: true
+    fetch-registry: true
+
+  instance:
+    prefer-ip-address: true
+
+app:
+  kafka:
+    topics:
+      payment: ${KAFKA_PAYMENT_TOPIC:payment-events}
+      order: ${KAFKA_ORDER_TOPIC:order-events}
+  notification:
+    retry:
+      max-attempts: 3
+      interval: 60000
+security:
+  jwt:
+    secret: ${JWT_SECRET:8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9}

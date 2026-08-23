@@ -3,6 +3,7 @@ package com.platform.order.service;
 import com.platform.order.client.CartClient;
 import com.platform.order.client.CatalogClient;
 import com.platform.order.client.InventoryClient;
+import com.platform.order.client.InventoryServiceClient;
 import com.platform.order.dto.*;
 import com.platform.order.entity.*;
 import com.platform.order.kafka.OrderEventProducer;
@@ -26,19 +27,19 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartClient cartClient;
     private final CatalogClient catalogClient;
-    private final InventoryClient inventoryClient;
+    private final InventoryServiceClient inventoryServiceClient;
     private final OrderEventProducer orderEventProducer;
     private final IdempotencyKeyRepository idempotencyKeyRepository;
     public OrderService(
             OrderRepository orderRepository,
             CartClient cartClient,
             CatalogClient catalogClient,
-            InventoryClient inventoryClient, OrderEventProducer orderEventProducer, IdempotencyKeyRepository idempotencyKeyRepository
+            InventoryClient inventoryClient, InventoryServiceClient inventoryServiceClient, OrderEventProducer orderEventProducer, IdempotencyKeyRepository idempotencyKeyRepository
     ) {
         this.orderRepository = orderRepository;
         this.cartClient = cartClient;
         this.catalogClient = catalogClient;
-        this.inventoryClient = inventoryClient;
+        this.inventoryServiceClient = inventoryServiceClient;
         this.orderEventProducer = orderEventProducer;
         this.idempotencyKeyRepository = idempotencyKeyRepository;
     }
@@ -371,7 +372,7 @@ public class OrderService {
                         orderItem.getQuantity()
                 );
 
-                inventoryClient.reserve(
+                inventoryServiceClient.reserve(
                         orderItem.getVariantId(),
                         new StockRequest(
                                 orderItem.getQuantity()
@@ -595,7 +596,7 @@ public class OrderService {
 
             try {
 
-                inventoryClient.release(
+                inventoryServiceClient.release(
                         item.getVariantId(),
                         new StockRequest(
                                 item.getQuantity()
