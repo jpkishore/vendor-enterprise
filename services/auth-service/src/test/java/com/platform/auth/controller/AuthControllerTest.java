@@ -44,7 +44,7 @@ class AuthControllerTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         RegisterResponse response = new RegisterResponse(

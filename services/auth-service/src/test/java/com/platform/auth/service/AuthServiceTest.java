@@ -61,7 +61,7 @@ class AuthServiceTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         when(userRepository.existsByEmailIgnoreCase(
@@ -139,7 +139,7 @@ class AuthServiceTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         when(userRepository.existsByEmailIgnoreCase(
@@ -181,7 +181,7 @@ class AuthServiceTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         when(userRepository.existsByEmailIgnoreCase(
@@ -210,7 +210,7 @@ class AuthServiceTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         when(userRepository.existsByEmailIgnoreCase(
@@ -247,7 +247,7 @@ class AuthServiceTest {
                 "Password@123",
                 "Kishore",
                 "K",
-                "9876543210"
+                "9876543210","CUSTOMER"
         );
 
         when(userRepository.existsByEmailIgnoreCase(
