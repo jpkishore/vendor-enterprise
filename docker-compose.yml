@@ -96,6 +96,7 @@ services:
 
     networks:
       - platform-network
+
   gateway-service:
     image: platform/gateway-service:1.0
     container_name: platform-gateway
@@ -187,6 +188,94 @@ services:
 
     depends_on:
       - mysql
+      - eureka-server
+      - config-server
+
+    networks:
+      - platform-network
+
+  order-service:
+    image: platform/order-service:1.0
+    container_name: platform-order
+    restart: unless-stopped
+
+    ports:
+      - "8085:8085"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      JWT_SECRET: 8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9
+
+    depends_on:
+      - mysql
+      - kafka
+      - eureka-server
+      - config-server
+      - inventory-service
+
+    networks:
+      - platform-network
+
+  payment-service:
+    image: platform/payment-service:1.0
+    container_name: platform-payment
+    restart: unless-stopped
+
+    ports:
+      - "8086:8086"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/payment_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      JWT_SECRET: 8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9
+
+    depends_on:
+      - mysql
+      - kafka
+      - eureka-server
+      - config-server
+
+    networks:
+      - platform-network
+
+  notification-service:
+    image: platform/notification-service:1.0
+    container_name: platform-notification
+    restart: unless-stopped
+
+    ports:
+      - "8087:8087"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/notification_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+
+      JWT_SECRET: 8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9
+
+    depends_on:
+      - mysql
+      - kafka
       - eureka-server
       - config-server
 
