@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: multi-vendor-platform
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: eureka-server
+
+  template:
+    metadata:
+      labels:
+        app: eureka-server
+
+    spec:
+      containers:
+        - name: eureka-server
+
+          # Your existing Docker image
+          image: platform/eureka-server:1.0
+
+          # Use the image already loaded into Minikube
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8761
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8761
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8761
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
