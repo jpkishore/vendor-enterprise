@@ -1,25 +1,20 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: config-server
   namespace: multi-vendor-platform
-
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: config-server
-
   template:
     metadata:
       labels:
         app: config-server
-
     spec:
       containers:
         - name: config-server
-
           image: platform/config-server:1.0
           imagePullPolicy: IfNotPresent
 
@@ -29,23 +24,41 @@ spec:
               protocol: TCP
 
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "uat,native"
+
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=60.0"
+
             - name: EUREKA_URL
               value: "http://eureka-server:8761/eureka/"
 
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
+          startupProbe:
+            tcpSocket:
               port: 8888
-            initialDelaySeconds: 40
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+
+          readinessProbe:
+            tcpSocket:
+              port: 8888
+            initialDelaySeconds: 0
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 6
 
           livenessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8888
             initialDelaySeconds: 60
             periodSeconds: 20
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
+
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 768Mi

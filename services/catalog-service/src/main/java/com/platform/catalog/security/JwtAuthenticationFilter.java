@@ -26,6 +26,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getServletPath().startsWith("/actuator/");
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -70,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
              */
             List<String> roles =
                     jwtService.extractRoles(token);
-           var authorities =
+            var authorities =
                     roles
                             .stream()
                             .map(role ->

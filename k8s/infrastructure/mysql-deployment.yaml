@@ -1,9 +1,13 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
+  namespace: multi-vendor-platform
 spec:
   replicas: 1
+
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -18,9 +22,12 @@ spec:
       containers:
         - name: mysql
           image: mysql:8.4
+          imagePullPolicy: IfNotPresent
 
           ports:
-            - containerPort: 3306
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
 
           env:
             - name: MYSQL_ROOT_PASSWORD
@@ -38,7 +45,7 @@ spec:
               command:
                 - sh
                 - -c
-                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+                - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 5
@@ -49,11 +56,17 @@ spec:
               command:
                 - sh
                 - -c
-                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+                - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
             initialDelaySeconds: 60
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 3
+
+          resources:
+            requests:
+              memory: 512Mi
+            limits:
+              memory: 1Gi
 
       volumes:
         - name: mysql-storage

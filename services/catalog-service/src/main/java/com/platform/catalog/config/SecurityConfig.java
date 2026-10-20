@@ -1,8 +1,10 @@
 package com.platform.catalog.config;
 
 import com.platform.catalog.security.JwtAuthenticationFilter;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,7 +21,25 @@ public class SecurityConfig {
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
+
+    // Actuator security
     @Bean
+    @Order(1)
+    public SecurityFilterChain actuatorSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
+        return http
+                .securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
+                )
+                .build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
@@ -35,10 +55,6 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info"
-                        ).permitAll()
                         .anyRequest().authenticated()
                 )
 

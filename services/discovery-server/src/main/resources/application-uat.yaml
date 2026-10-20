@@ -1,0 +1,6 @@
+app:
+  environment: uat
+
+eureka:
+  instance:
+    hostname: eureka-server

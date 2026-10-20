@@ -1,28 +1,21 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: eureka-server
   namespace: multi-vendor-platform
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: eureka-server
-
   template:
     metadata:
       labels:
         app: eureka-server
-
     spec:
       containers:
         - name: eureka-server
-
-          # Your existing Docker image
           image: platform/eureka-server:1.0
-
-          # Use the image already loaded into Minikube
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -30,20 +23,39 @@ spec:
               containerPort: 8761
               protocol: TCP
 
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "uat"
+
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=60.0"
+
+          startupProbe:
+            tcpSocket:
               port: 8761
-            initialDelaySeconds: 30
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+
+          readinessProbe:
+            tcpSocket:
+              port: 8761
+            initialDelaySeconds: 0
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 6
 
           livenessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8761
             initialDelaySeconds: 60
             periodSeconds: 20
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
+
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 768Mi

@@ -2,9 +2,11 @@ package com.platform.notification.config;
 
 import com.platform.notification.security.JwtAuthenticationFilter;
 
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,8 +26,25 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter =
                 jwtAuthenticationFilter;
     }
-
+    // Actuator security
     @Bean
+    @Order(1)
+    public SecurityFilterChain actuatorSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
+        return http
+                .securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
+                )
+                .build();
+    }
+
+    // Application security
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
@@ -44,13 +63,6 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth ->
                         auth
-
-                                .requestMatchers(
-                                        "/actuator/health",
-                                        "/actuator/info"
-                                )
-                                .permitAll()
-
                                 .requestMatchers(
                                         HttpMethod.GET,
                                         "/api/v1/notifications",

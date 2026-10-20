@@ -1,26 +1,37 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
+  namespace: multi-vendor-platform
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: redis
-
   template:
     metadata:
       labels:
         app: redis
-
     spec:
       containers:
         - name: redis
           image: redis:7
+          imagePullPolicy: IfNotPresent
 
           ports:
-            - containerPort: 6379
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+
+          startupProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
 
           readinessProbe:
             exec:
@@ -28,12 +39,22 @@ spec:
                 - redis-cli
                 - ping
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
 
           livenessProbe:
             exec:
               command:
                 - redis-cli
                 - ping
-            initialDelaySeconds: 15
-            periodSeconds: 10
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 256Mi
