@@ -45,4 +45,6 @@ jobs:
           cache-dependency-path: services/${{ matrix.service }}/pom.xml
 
       - name: Build and run tests
+        env:
+          SECURITY_JWT_SECRET: ci-only-test-secret-not-for-production-1234567890
         run: mvn --batch-mode --no-transfer-progress -f services/${{ matrix.service }}/pom.xml verify
