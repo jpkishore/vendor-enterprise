@@ -1,13 +1,24 @@
 package com.platform.order;
 
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
-class OrderServiceApplicationTests {
+@Testcontainers
+@SpringBootTest(properties = {
+		"security.service.token=test-only-service-token"
+})class OrderServiceApplicationTests {
+
+	@Container
+	@ServiceConnection
+	static MySQLContainer<?> mysql =
+			new MySQLContainer<>("mysql:8.4");
 
 	@Test
 	void contextLoads() {
 	}
-
 }

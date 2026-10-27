@@ -3,8 +3,10 @@ package com.platform.inventory.config;
 import com.platform.inventory.security.JwtAuthenticationFilter;
 import com.platform.inventory.security.ServiceTokenFilter;
 
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,7 +31,25 @@ public class SecurityConfig {
                 serviceTokenFilter;
     }
 
+    // Actuator security
     @Bean
+    @Order(1)
+    public SecurityFilterChain actuatorSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
+        return http
+                .securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
+                )
+                .build();
+    }
+
+    // Application security
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
@@ -48,14 +68,6 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // =====================================
-                        // ACTUATOR
-                        // =====================================
-
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info"
-                        ).permitAll()
 
                         // =====================================
                         // CUSTOMER / ADMIN READ

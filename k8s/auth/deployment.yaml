@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 
 metadata:
@@ -22,7 +22,6 @@ spec:
         - name: auth-service
 
           image: platform/auth-service:1.0
-
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -31,6 +30,18 @@ spec:
               protocol: TCP
 
           env:
+
+            # =========================
+            # Application Environment
+            # =========================
+            - name: SPRING_PROFILES_ACTIVE
+              value: "uat"
+
+            # =========================
+            # JVM
+            # =========================
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=60.0"
 
             # =========================
             # MySQL
@@ -57,24 +68,8 @@ spec:
             # JWT
             # =========================
             - name: JWT_SECRET
-              value: "8F9D7A2C4B6E8F1D3A5C7E9B1D2F4A6C8E0F2A4B6C8D1E3F5A7B9C1D3E5F7A9"
-
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8081
-
-            initialDelaySeconds: 40
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 6
-
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8081
-
-            initialDelaySeconds: 60
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 3
+              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: JWT_SECRET

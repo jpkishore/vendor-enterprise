@@ -1,11 +1,33 @@
-server:
-  port: 8761
-
 spring:
   application:
     name: discovery-server
+
+server:
+  port: 8761
 
 eureka:
   client:
     register-with-eureka: false
     fetch-registry: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+  endpoint:
+    health:
+      show-details: when_authorized
+
+#server:
+#  port: 8761
+#
+#spring:
+#  application:
+#    name: discovery-server
+#
+#eureka:
+#  client:
+#    register-with-eureka: false
+#    fetch-registry: false

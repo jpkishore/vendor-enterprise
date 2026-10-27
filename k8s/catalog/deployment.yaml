@@ -1,26 +1,20 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: catalog-service
   namespace: multi-vendor-platform
-
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: catalog-service
-
   template:
     metadata:
       labels:
         app: catalog-service
-
     spec:
       containers:
         - name: catalog-service
-
           image: platform/catalog-service:1.0
           imagePullPolicy: IfNotPresent
 
@@ -30,9 +24,12 @@ spec:
               protocol: TCP
 
           env:
-            # =========================
-            # MySQL
-            # =========================
+            - name: SPRING_PROFILES_ACTIVE
+              value: "uat"
+
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=60.0"
+
             - name: DB_URL
               value: "jdbc:mysql://mysql:3306/catalog_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8"
 
@@ -45,47 +42,54 @@ spec:
                   name: mysql-secret
                   key: MYSQL_ROOT_PASSWORD
 
-            # =========================
-            # Redis
-            # =========================
             - name: REDIS_HOST
               value: "redis"
 
             - name: REDIS_PORT
               value: "6379"
 
-            # =========================
-            # Kafka
-            # =========================
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "kafka:9092"
 
-            # =========================
-            # Eureka
-            # =========================
             - name: EUREKA_URL
               value: "http://eureka-server:8761/eureka/"
 
-            # =========================
-            # Config Server
-            # =========================
             - name: CONFIG_SERVER_URL
               value: "http://config-server:8888"
 
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
+            - name: JWT_SECRET
+              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: JWT_SECRET
+
+          startupProbe:
+            tcpSocket:
               port: 8082
-            initialDelaySeconds: 40
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 72
+
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 0
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 6
 
           livenessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8082
             initialDelaySeconds: 60
             periodSeconds: 20
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
+
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 768Mi

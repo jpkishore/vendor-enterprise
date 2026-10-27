@@ -1,0 +1,6 @@
+app:
+  environment: live
+
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:eureka-server}

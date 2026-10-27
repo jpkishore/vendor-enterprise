@@ -1,0 +1,6 @@
+app:
+  environment: local
+
+eureka:
+  instance:
+    hostname: localhost

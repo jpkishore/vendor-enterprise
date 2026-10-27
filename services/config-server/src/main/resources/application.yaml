@@ -1,13 +1,12 @@
+
 server:
   port: 8888
 
 spring:
   application:
     name: config-server
-
   profiles:
     active: native
-
   cloud:
     config:
       server:
@@ -16,11 +15,41 @@ spring:
 
 eureka:
   client:
+    register-with-eureka: true
+    fetch-registry: true
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
+
+
+#server:
+#  port: 8888
+#
+#spring:
+#  application:
+#    name: config-server
+#
+#  profiles:
+#    active: native
+#
+#  cloud:
+#    config:
+#      server:
+#        native:
+#          search-locations: file:${CONFIG_REPO_PATH:./config-repo}
+#
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http://eureka-server:8761/eureka/
+#
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health,info
