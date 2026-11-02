@@ -10,7 +10,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 @SpringBootTest(properties = {
-        "security.service.token=test-only-service-token"
+        "security.service.token=test-only-service-token",
+        "security.jwt.secret=test-only-secret-for-context-loading"
 })
 class PaymentServiceApplicationTests {
 

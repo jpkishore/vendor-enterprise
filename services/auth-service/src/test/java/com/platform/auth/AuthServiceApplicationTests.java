@@ -8,7 +8,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties = {
+        "security.jwt.secret=test-only-secret-for-context-loading"
+})
 class AuthServiceApplicationTests {
 
     @Container

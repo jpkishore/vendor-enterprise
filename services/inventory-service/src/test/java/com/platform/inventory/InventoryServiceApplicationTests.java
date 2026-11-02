@@ -9,8 +9,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 @SpringBootTest(properties = {
-        "security.service.token=test-only-service-token"
-})class InventoryServiceApplicationTests {
+        "security.service.token=test-only-service-token",
+        "security.jwt.secret=test-only-secret-for-context-loading"
+})
+class InventoryServiceApplicationTests {
 
     @Container
     @ServiceConnection

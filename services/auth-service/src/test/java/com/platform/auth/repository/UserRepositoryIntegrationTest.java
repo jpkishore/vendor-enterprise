@@ -12,7 +12,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties = {
+        "security.jwt.secret=test-only-secret-for-context-loading"
+})
 class UserRepositoryIntegrationTest {
 
     @Container

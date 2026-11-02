@@ -10,15 +10,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 @SpringBootTest(properties = {
-		"security.service.token=test-only-service-token"
-})class OrderServiceApplicationTests {
+        "security.service.token=test-only-service-token",
+        "security.jwt.secret=test-only-secret-for-context-loading"
+})
+class OrderServiceApplicationTests {
 
-	@Container
-	@ServiceConnection
-	static MySQLContainer<?> mysql =
-			new MySQLContainer<>("mysql:8.4");
+    @Container
+    @ServiceConnection
+    static MySQLContainer<?> mysql =
+            new MySQLContainer<>("mysql:8.4");
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+    }
 }
